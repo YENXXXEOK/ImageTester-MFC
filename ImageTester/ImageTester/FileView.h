@@ -2,6 +2,8 @@
 #pragma once
 
 #include "ViewTree.h"
+#include <map>
+using namespace std;
 
 class CFileViewToolBar : public CMFCToolBar
 {
@@ -15,6 +17,13 @@ class CFileViewToolBar : public CMFCToolBar
 
 class CFileView : public CDockablePane
 {
+private:
+	CString m_strSelect;
+	map<HTREEITEM, CString> m_mapTree;
+
+	void LoadWindowIcon(CString strPath, CImageList* imageList, SHFILEINFO* sfi);
+	void RecursionFindFile(CString strPath, HTREEITEM hParent);
+
 // 생성입니다.
 public:
 	CFileView() noexcept;

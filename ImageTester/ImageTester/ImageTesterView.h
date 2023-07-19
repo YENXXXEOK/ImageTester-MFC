@@ -7,6 +7,16 @@
 
 class CImageTesterView : public CView
 {
+private:
+	Mat m_cvImage;
+
+	CDC memDC;
+	CBitmap bmp;
+	CBitmap* pOldBitmap;
+
+public:
+	void SetImage(CString strPath);
+
 protected: // serialization에서만 만들어집니다.
 	CImageTesterView() noexcept;
 	DECLARE_DYNCREATE(CImageTesterView)

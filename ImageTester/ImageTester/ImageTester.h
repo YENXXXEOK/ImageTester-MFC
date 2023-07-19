@@ -8,14 +8,19 @@
 #endif
 
 #include "resource.h"       // 주 기호입니다.
-
-
+#include <opencv2/opencv.hpp>
 // CImageTesterApp:
 // 이 클래스의 구현에 대해서는 ImageTester.cpp을(를) 참조하세요.
 //
-
+using namespace cv;
 class CImageTesterApp : public CWinAppEx
 {
+private: 
+	void OnFileOpen();
+
+public:
+	void SetImage(CString strPath);
+
 public:
 	CImageTesterApp() noexcept;
 

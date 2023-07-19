@@ -89,39 +89,84 @@ void CFileView::OnSize(UINT nType, int cx, int cy)
 	AdjustLayout();
 }
 
+void CFileView::LoadWindowIcon(CString strPath, CImageList* imageList, SHFILEINFO* sfi)
+{
+	HIMAGELIST NewImageList;
+	NewImageList = (HIMAGELIST)SHGetFileInfo(strPath, FILE_ATTRIBUTE_NORMAL, &(*sfi), sizeof(SHFILEINFO), SHGFI_ICON | SHGFI_SYSICONINDEX | SHGFI_SMALLICON);
+
+	HICON hIcon = sfi->hIcon;
+	imageList->Attach(NewImageList);
+	imageList->Add(hIcon);
+
+	m_wndFileView.SetImageList(&(*imageList), LVSIL_NORMAL);
+}
+
+void CFileView::RecursionFindFile(CString strPath, HTREEITEM hParent)
+{
+	CString path;
+	path = strPath + _T("\\*.*");
+
+	CFileFind finder;
+	BOOL bWork = finder.FindFile(path);
+
+	CImageList imageList;
+	SHFILEINFO sfi;
+	while (bWork)
+	{
+		bWork = finder.FindNextFile();
+
+		if (finder.IsDots())
+		{
+			continue;
+		}
+		else if (finder.IsDirectory())
+		{
+			CString folderName = finder.GetFileName();
+
+			// 현재 폴더와 상위 폴더의 썸네일 파일은 제외
+			if (folderName == _T("Thumbs.db"))
+				continue;
+
+			LoadWindowIcon(finder.GetFilePath(), &imageList, &sfi);
+
+			HTREEITEM hFolder = m_wndFileView.InsertItem(folderName, imageList.GetImageCount() - 1, imageList.GetImageCount() - 1, hParent);
+			imageList.Detach();
+			DestroyIcon(sfi.hIcon);
+
+			m_mapTree.insert({ hFolder, finder.GetFilePath() });
+			RecursionFindFile(finder.GetFilePath(), hFolder); // 하위 폴더 탐색
+		}
+		else
+		{
+			CString fileName = finder.GetFileName();
+
+			// 현재 폴더와 상위 폴더의 썸네일 파일은 제외
+			if (fileName == _T("Thumbs.db"))
+				continue;
+
+			LoadWindowIcon(finder.GetFilePath(), &imageList, &sfi);
+
+			HTREEITEM hItem = m_wndFileView.InsertItem(fileName, imageList.GetImageCount() - 1, imageList.GetImageCount() - 1, hParent);
+			imageList.Detach();
+			DestroyIcon(sfi.hIcon);
+
+			m_mapTree.insert({ hItem, finder.GetFilePath() });
+		}
+	}
+
+	finder.Close();
+}
+
 void CFileView::FillFileView()
 {
-	HTREEITEM hRoot = m_wndFileView.InsertItem(_T("FakeApp 파일"), 0, 0);
-	m_wndFileView.SetItemState(hRoot, TVIS_BOLD, TVIS_BOLD);
+	TCHAR exePath[256] = { 0, };
+	GetModuleFileName(NULL, exePath, 256);   // 현재 경로 가져오기
 
-	HTREEITEM hSrc = m_wndFileView.InsertItem(_T("FakeApp 소스 파일"), 0, 0, hRoot);
+	CString folderPath = exePath;
+	folderPath = folderPath.Left(folderPath.ReverseFind('\\')); // 실행파일을 뺀 경로 가져오기
 
-	m_wndFileView.InsertItem(_T("FakeApp.cpp"), 1, 1, hSrc);
-	m_wndFileView.InsertItem(_T("FakeApp.rc"), 1, 1, hSrc);
-	m_wndFileView.InsertItem(_T("FakeAppDoc.cpp"), 1, 1, hSrc);
-	m_wndFileView.InsertItem(_T("FakeAppView.cpp"), 1, 1, hSrc);
-	m_wndFileView.InsertItem(_T("MainFrm.cpp"), 1, 1, hSrc);
-	m_wndFileView.InsertItem(_T("pch.cpp"), 1, 1, hSrc);
+	RecursionFindFile(folderPath, NULL);     // 재귀함수 호출
 
-	HTREEITEM hInc = m_wndFileView.InsertItem(_T("FakeApp 헤더 파일"), 0, 0, hRoot);
-
-	m_wndFileView.InsertItem(_T("FakeApp.h"), 2, 2, hInc);
-	m_wndFileView.InsertItem(_T("FakeAppDoc.h"), 2, 2, hInc);
-	m_wndFileView.InsertItem(_T("FakeAppView.h"), 2, 2, hInc);
-	m_wndFileView.InsertItem(_T("Resource.h"), 2, 2, hInc);
-	m_wndFileView.InsertItem(_T("MainFrm.h"), 2, 2, hInc);
-	m_wndFileView.InsertItem(_T("pch.h"), 2, 2, hInc);
-
-	HTREEITEM hRes = m_wndFileView.InsertItem(_T("FakeApp 리소스 파일"), 0, 0, hRoot);
-
-	m_wndFileView.InsertItem(_T("FakeApp.ico"), 2, 2, hRes);
-	m_wndFileView.InsertItem(_T("FakeApp.rc2"), 2, 2, hRes);
-	m_wndFileView.InsertItem(_T("FakeAppDoc.ico"), 2, 2, hRes);
-	m_wndFileView.InsertItem(_T("FakeToolbar.bmp"), 2, 2, hRes);
-
-	m_wndFileView.Expand(hRoot, TVE_EXPAND);
-	m_wndFileView.Expand(hSrc, TVE_EXPAND);
-	m_wndFileView.Expand(hInc, TVE_EXPAND);
 }
 
 void CFileView::OnContextMenu(CWnd* pWnd, CPoint point)
@@ -146,6 +191,7 @@ void CFileView::OnContextMenu(CWnd* pWnd, CPoint point)
 		if (hTreeItem != nullptr)
 		{
 			pWndTree->SelectItem(hTreeItem);
+			m_strSelect = m_mapTree[hTreeItem];
 		}
 	}
 
@@ -177,7 +223,8 @@ void CFileView::OnProperties()
 
 void CFileView::OnFileOpen()
 {
-	// TODO: 여기에 명령 처리기 코드를 추가합니다.
+	CImageTesterApp* pApp = (CImageTesterApp*)AfxGetMainWnd();
+	pApp->SetImage(m_strSelect);
 }
 
 void CFileView::OnFileOpenWith()

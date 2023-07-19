@@ -53,7 +53,7 @@ BOOL CImageTesterView::PreCreateWindow(CREATESTRUCT& cs)
 
 // CImageTesterView 그리기
 
-void CImageTesterView::OnDraw(CDC* /*pDC*/)
+void CImageTesterView::OnDraw(CDC* pDC)
 {
 	CImageTesterDoc* pDoc = GetDocument();
 	ASSERT_VALID(pDoc);
@@ -61,6 +61,41 @@ void CImageTesterView::OnDraw(CDC* /*pDC*/)
 		return;
 
 	// TODO: 여기에 원시 데이터에 대한 그리기 코드를 추가합니다.
+	// MFC DC와 호환되는 비트맵을 생성합니다.
+	BITMAPINFO bmpInfo;
+	bmpInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	bmpInfo.bmiHeader.biWidth = m_cvImage.cols;
+	bmpInfo.bmiHeader.biHeight = -m_cvImage.rows; // 음수로 설정하여 상하 반전
+	bmpInfo.bmiHeader.biPlanes = 1;
+	bmpInfo.bmiHeader.biBitCount = 24; // 24비트 RGB 이미지
+	bmpInfo.bmiHeader.biCompression = BI_RGB;
+	bmpInfo.bmiHeader.biSizeImage = 0;
+	bmpInfo.bmiHeader.biXPelsPerMeter = 0;
+	bmpInfo.bmiHeader.biYPelsPerMeter = 0;
+	bmpInfo.bmiHeader.biClrUsed = 0;
+	bmpInfo.bmiHeader.biClrImportant = 0;
+
+	void* pImageData = m_cvImage.data;
+	// DIB 섹션을 MFC DC에 선택합니다.
+	memDC.CreateCompatibleDC(pDC);
+
+	bmp.CreateCompatibleBitmap(pDC, m_cvImage.cols, m_cvImage.rows);
+	pOldBitmap = memDC.SelectObject(&bmp);
+	SetDIBitsToDevice(memDC, 0, 0, m_cvImage.cols, m_cvImage.rows, 0, 0, 0, m_cvImage.rows, pImageData, &bmpInfo, DIB_RGB_COLORS);
+
+	CRect rect;
+	GetClientRect(&rect);
+
+	pDC->SetStretchBltMode(HALFTONE);
+	pDC->StretchBlt(rect.left, rect.top,
+		rect.Width(), rect.Height(), &memDC,
+		0, 0,
+		m_cvImage.cols, m_cvImage.rows,
+		SRCCOPY);
+
+	memDC.SelectObject(pOldBitmap);
+	bmp.DeleteObject();
+	memDC.DeleteDC();
 }
 
 
@@ -126,3 +161,17 @@ CImageTesterDoc* CImageTesterView::GetDocument() const // 디버그되지 않은
 
 
 // CImageTesterView 메시지 처리기
+void CImageTesterView::SetImage(CString strPath)
+{
+	String str = CT2A(strPath);
+	m_cvImage = imread(str);
+	try
+	{
+		cvtColor(m_cvImage, m_cvImage, COLOR_BGR2RGB);
+	}
+	catch (Exception& e)
+	{
+
+	}
+	Invalidate();
+}
