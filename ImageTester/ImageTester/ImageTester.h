@@ -13,9 +13,20 @@
 // 이 클래스의 구현에 대해서는 ImageTester.cpp을(를) 참조하세요.
 //
 using namespace cv;
+
+typedef void			(*fp_OnSpecDlg)							();
+typedef void			(*fp_OnCreateItem)						();
+typedef UINT			(*fp_OnTest)							();
+typedef	void			(*fp_OnDeleteItem)						();
+
+
 class CImageTesterApp : public CWinAppEx
 {
 private: 
+	HINSTANCE m_hInstance;
+
+	void Load_LibItem(UINT nItem, CString strFolder, CString strFileName);
+
 	void OnFileOpen();
 
 public:

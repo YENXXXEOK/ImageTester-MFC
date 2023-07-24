@@ -225,7 +225,7 @@ void CImageTesterApp::SaveCustomState()
 // CImageTesterApp 메시지 처리기
 void CImageTesterApp::OnFileOpen()
 {
-	CString strFilter = _T("All Files(*.*)|*.*|jpeg (*.jpg)|*.jpg|bmp (*.bmp)|*.bmp|raw (*.raw)|*.raw|";);
+	CString strFilter = _T("All Files(*.*)|*.*|jpeg (*.jpg)|*.jpg|bmp (*.bmp)|*.bmp|raw (*.raw)|*.raw|");
 	CFileDialog file(TRUE, _T("*"), _T("*.bmp"), OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY, strFilter, NULL);
 	if (file.DoModal() == IDOK)
 	{
@@ -233,6 +233,9 @@ void CImageTesterApp::OnFileOpen()
 
 		SetImage(strPath);
 	}
+
+	Load_LibItem(0, _T("Dll"), _T("Sample_Dll.dll"));
+	Load_LibItem(1, _T("Dll"), _T("Sample_Dll.dll"));
 }
 
 void CImageTesterApp::SetImage(CString strPath)
@@ -243,3 +246,63 @@ void CImageTesterApp::SetImage(CString strPath)
 	pView->SetImage(strPath);
 }
 
+void CImageTesterApp::Load_LibItem(UINT nItem, CString strFolder, CString strFileName)
+{
+	TCHAR szPath[MAX_PATH];
+	CString str;
+
+	fp_OnCreateItem				OnCreateItem	=		NULL;
+	fp_OnSpecDlg				OnSpecDlg		=		NULL;
+	fp_OnTest					OnTest			=		NULL;
+	fp_OnDeleteItem				OnDeleteItem	=		NULL;
+
+	TCHAR exePath[256] = { 0, };
+	GetModuleFileName(NULL, exePath, 256);   // 현재 경로 가져오기
+
+	CString folderPath = exePath;
+	folderPath = folderPath.Left(folderPath.ReverseFind('\\')); // 실행파일을 뺀 경로 가져오기
+
+
+	wsprintf(szPath, _T("%s\\%s\\%s"), folderPath, strFolder, strFileName);
+	m_hInstance = ::LoadLibrary(szPath);
+
+	if (m_hInstance)
+	{
+		OnCreateItem	=		(fp_OnCreateItem)		GetProcAddress		(m_hInstance, "OnCreateItem");
+		OnSpecDlg		=		(fp_OnSpecDlg)			GetProcAddress		(m_hInstance, "OnSpecDlg");
+		OnTest			=		(fp_OnTest)				GetProcAddress		(m_hInstance, "OnTest");
+		OnDeleteItem	=		(fp_OnDeleteItem)		GetProcAddress		(m_hInstance, "OnDeleteItem");
+
+		if (
+			OnCreateItem &&
+			OnSpecDlg// &&
+			//OnTest &&
+			//OnDeleteItem
+			)
+		{
+			str.Format(_T("%s Pass to get function pointer.\n"), strFileName);
+			TRACE(str);
+		}
+		else
+		{
+			str.Format(_T("%s Failed to get function pointer.\n"), strFileName);
+			AfxMessageBox(str);
+		}
+	}
+	switch (nItem)
+	{
+	case 0:
+		OnCreateItem();
+		break;
+	case 1:
+		OnSpecDlg();
+		break;
+	case 2:
+		OnTest();
+		break;
+	case 3:
+		OnDeleteItem();
+		break;
+	}
+
+}
